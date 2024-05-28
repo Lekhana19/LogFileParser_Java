@@ -1,8 +1,8 @@
 {
     "memory_usage_percent": {
-        "average": 87.75,
+        "average": 88,
         "min": 70,
-        "median": 90.5,
+        "median": 91,
         "max": 100
     },
     "cpu_usage_percent": {

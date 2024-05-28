@@ -1,24 +1,12 @@
 package handlers;
-
 import util.SaveJSONFile;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 
 public class RequestHandler implements Handler {
     private Handler nextHandler;
     private Map<String, List<Integer>> responseTimes = new HashMap<>();
     private Map<String, Map<String, Integer>> statusCounts = new HashMap<>();
-    private FileWriter errorLogWriter; // FileWriter to write errors to a file
-
-    public RequestHandler() {
-        try {
-            errorLogWriter = new FileWriter("error_logs.txt", true); // Open the file in append mode
-        } catch (IOException e) {
-            System.err.println("Error opening the error log file: " + e.getMessage());
-        }
-    }
 
     @Override
     public void setNext(Handler handler) {
@@ -37,65 +25,36 @@ public class RequestHandler implements Handler {
     private void processLog(String log) {
         String[] parts = log.split(" ");
         String url = null;
-        Integer responseTime = null;
+        int responseTime = 0;
         String statusCode = null;
 
-        try {
-            for (String part : parts) {
-                if (part.startsWith("request_url=")) {
-                    url = part.split("=")[1];
-                    url = url.replace("\"", ""); // Remove double quotes
-                    url = url.replace("\\", ""); // Remove backslashes
-                } else if (part.startsWith("response_time_ms=")) {
+        for (String part : parts) {
+            if (part.startsWith("request_url=")) {
+                url = part.split("=")[1];
+                url = url.replace("\"", ""); // Remove double quotes
+                url = url.replace("\\", ""); // Remove backslashes
+            } else if (part.startsWith("response_time_ms=")) {
+                try {
                     responseTime = Integer.parseInt(part.split("=")[1]);
-                } else if (part.startsWith("response_status=")) {
-                    statusCode = part.split("=")[1].substring(0, 1) + "XX";
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid number format for response time in log: " + log);
+                    return; // Skip this log if the response time is not a valid integer
                 }
+            } else if (part.startsWith("response_status=")) {
+                statusCode = part.split("=")[1].substring(0, 1) + "XX";
             }
-        } catch (NumberFormatException e) {
-            logError("Skipping invalid log entry (number format): " + log);
-            return; // Skip this log if parsing fails
         }
 
-        if (url == null || responseTime == null || statusCode == null) {
-            logError("Skipping incomplete log entry: " + log);
-            return; // Skip processing this log
-        }
+        if (url != null) {
+            responseTimes.putIfAbsent(url, new ArrayList<>());
+            responseTimes.get(url).add(responseTime);
 
-        responseTimes.putIfAbsent(url, new ArrayList<>());
-        responseTimes.get(url).add(responseTime);
-
-        statusCounts.putIfAbsent(url, new HashMap<>());
-        statusCounts.get(url).put(statusCode, statusCounts.get(url).getOrDefault(statusCode, 0) + 1);
-    }
-
-    private void logError(String message) {
-        try {
-            errorLogWriter.write(message + "\n");
-        } catch (IOException e) {
-            System.err.println("Error writing to error log file: " + e.getMessage());
+            statusCounts.putIfAbsent(url, new HashMap<>());
+            statusCounts.get(url).put(statusCode, statusCounts.get(url).getOrDefault(statusCode, 0) + 1);
         }
     }
 
-    @Override
-    public void final_output() {
-        Map<String, Map<String, Object>> aggregatedData = aggregateResponseData();
-        SaveJSONFile.writeMapToJson(aggregatedData, "request.json");
-
-        try {
-            if (errorLogWriter != null) {
-                errorLogWriter.close(); // Close the FileWriter to flush and release system resources
-            }
-        } catch (IOException e) {
-            System.err.println("Error closing the error log file: " + e.getMessage());
-        }
-
-        if (nextHandler != null) {
-            nextHandler.final_output();
-        }
-    }
-
-    Map<String, Map<String, Object>> aggregateResponseData() {
+    public Map<String, Map<String, Object>> aggregateResponseData() {
         Map<String, Map<String, Object>> aggregatedData = new LinkedHashMap<>();
 
         for (Map.Entry<String, List<Integer>> entry : responseTimes.entrySet()) {
@@ -123,9 +82,11 @@ public class RequestHandler implements Handler {
             urlData.put("response_times", responseData);
             urlData.put("status_codes", statusData);
 
+
             aggregatedData.put(url, urlData);
         }
 
+        // Printing the aggregated data as JSON
         return aggregatedData;
     }
 
@@ -133,4 +94,13 @@ public class RequestHandler implements Handler {
         int index = (int) Math.ceil(percentile / 100.0 * times.size()) - 1;
         return times.get(index);
     }
+    @Override
+    public void final_output(){
+        Map<String, Map<String, Object>> aggregatedData = aggregateResponseData();
+        SaveJSONFile.writeMapToJson(aggregatedData,"request.json");
+        if (nextHandler != null) {
+            nextHandler.final_output();
+        }
+    }
+
 }
