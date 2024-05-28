@@ -1,0 +1,3 @@
+Skipping incomplete log entry: timestamp=2024-03-01T10:06:50Z invalid_log_type metric=memory_usage_percent
+Skipping incomplete log entry: timestamp=2024-03-01T10:06:00Z request_method=GET request_url="/api/backup/status"
+Skipping incomplete log entry: timestamp=2024-03-01T10:06:40Z request_method=GET request_url="/api/backup/status"
