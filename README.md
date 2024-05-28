@@ -2,6 +2,7 @@
 
 ## Problem Statement
 Find the exact problem statements in the screenshots folder
+
 The problem we are solving is log processing, where log files have several types of log entries. There are three categories of logs:
 - APM Logs: These contain performance-related metrics such as CPU, memory, and disk usage.
 - Application Logs: These contain operational state information like errors, warnings, and informational messages.
